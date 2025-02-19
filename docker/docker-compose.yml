@@ -1,0 +1,37 @@
+services:
+  mysql:
+    image: mysql:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+  python:
+    image: python:3.9
+    container_name: python_container
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../public/py:/app
+    networks:
+      - app-network
+    command: sh -c "pip install Flask && python /app/main.py"
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysqldata:

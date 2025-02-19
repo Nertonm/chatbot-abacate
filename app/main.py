@@ -1,15 +1,18 @@
 from flask import Flask, request, jsonify
 import mysql.connector
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
+load_dotenv()
+
 # Configuração da conexão com o MySQL
 db_config = {
-    'user': 'root',  # Seu usuário MySQL
-    'password': '1234',  # Sua senha MySQL
-    'host': 'localhost',
-    'port': '3366',
-    'database': 'chatbot_db'
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'host': os.getenv('DB_HOST'),
+    'port': os.getenv('DB_PORT'),
+    'database': os.getenv('DB_DATABASE')
 }
 
 # Função para conectar ao banco de dados MySQL
