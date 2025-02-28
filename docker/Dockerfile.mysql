@@ -1,0 +1,4 @@
+# Usar a imagem oficial do MySQL mais recente
+FROM mysql:latest
+# Expor a porta padrão do MySQL
+EXPOSE 3306
