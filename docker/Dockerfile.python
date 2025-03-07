@@ -7,21 +7,24 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar o Uvicorn e o Flask
-RUN pip install --no-cache-dir flask uvicorn
-
 # Definir o diretório de trabalho
 WORKDIR /app
 
-# Copiar o conteúdo de 'app/main' para o diretório de trabalho no contêiner
+# Copiar o restante do código do projeto para o diretório de trabalho no contêiner
 COPY ../app/ /app/
 
-
-# Instalar dependências do projeto (se houver requirements.txt)
-RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
-
+# Instalar as dependências do projeto diretamente
+RUN pip install --no-cache-dir \
+    Flask \
+    python-dotenv \
+    mysql-connector-python \
+    uvicorn \
+    openai \
+    flask_sqlalchemy \
+    psycopg2-binary 
+    
 # Expor a porta 8000 para o Uvicorn
 EXPOSE 8000
 
 # Iniciar o Uvicorn com o Flask (alterando o caminho para o arquivo main.py)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
