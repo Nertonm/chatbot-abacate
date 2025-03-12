@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir \
     uvicorn \
     openai \
     flask_sqlalchemy \
+    pymysql\
     psycopg2-binary 
     
 # Expor a porta 8000 para o Uvicorn

@@ -30,7 +30,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     networks:
       - app-network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    command: "sleep 10 && uvicorn app:app --host 0.0.0.0 --port 8000"
 
 networks:
   app-network:
