@@ -1,57 +1,97 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import create_engine
-import os
+import fitz  # PyMuPDF para ler PDFs
+import openai
+from flask import Flask, request, jsonify, render_template, Response
+import threading, os
+
+# Configuração da API OpenAI
+client = openai.OpenAI(api_key="")
 
 app = Flask(__name__)
 
-# Configuração da conexão com o MySQL
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "DB_ROOT_PASSWORD")
-DB_HOST = os.getenv("DB_HOST", "mysql")  # Nome do serviço no Docker Compose
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME", "DB_NAME")
+stop_event = threading.Event()
 
-DATABASE_URI = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Criando a conexão diretamente com create_engine
-engine = create_engine(DATABASE_URI)
+pdf_content = ""  # Variável global para armazenar o texto do PDF
 
-# Inicializa o SQLAlchemy
-app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
+# Rota para carregar a página HTML
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-# Testa a conexão
-try:
-    with engine.connect() as connection:
-        print("✅ Conexão com MySQL bem-sucedida!")
-except Exception as e:
-    print(f"❌ Erro ao conectar ao MySQL: {e}")
+@app.route("/upload_pdf", methods=["POST"])
+def upload_pdf():
+    global pdf_content  # Usa a variável global para armazenar o texto extraído
 
-# Modelo de Dados
-class Message(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_message = db.Column(db.Text, nullable=False)
-    bot_response = db.Column(db.Text, nullable=False)
+    if "file" not in request.files:
+        return jsonify({"message": "Nenhum arquivo enviado."}), 400
 
-# Criar tabelas no banco (se não existirem)
-with app.app_context():
-    db.create_all()
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"message": "Nome do arquivo inválido."}), 400
+
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(file_path)
+
+    # Extrai texto do PDF e armazena na variável global
+    pdf_content = extract_text_from_pdf(file_path)
+
+    return jsonify({"message": "PDF recebido e processado!", "text": pdf_content[:200] + "..."})
 
 
-# Modelo de Dados para a Tabela 'messages'
-class Message(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_message = db.Column(db.Text, nullable=False)
-    bot_response = db.Column(db.Text, nullable=False)
+def extract_text_from_pdf(pdf_path):
+    """Lê o conteúdo de um arquivo PDF e retorna o texto extraído."""
+    text = ""
+    with fitz.open(pdf_path) as doc:
+        for page in doc:
+            text += page.get_text("text") + "\n"
+    return text
 
-# Modelo de Dados para a Tabela 'faq'
-class Faq(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    question = db.Column(db.Text, nullable=False)
-    answer = db.Column(db.Text, nullable=False)
+# Função para interagir com o ChatGPT
+def chat_with_gpt(prompt):
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "system", "content": "Você é um assistente útil."},
+                  {"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
 
-# Criação das Tabelas no Banco (caso não existam)
-with app.app_context():
-    db.create_all()
+
+def generate_response_stream(prompt):
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True
+    )
+    for chunk in response:
+        if chunk.choices and hasattr(chunk.choices[0].delta, "content"):
+            content = chunk.choices[0].delta.content
+            if content:
+                yield f'{{"response": "{content}"}}\n'
+
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    global pdf_content  # Acessa o conteúdo do PDF carregado
+    data = request.json
+    question = data.get("question", "").strip()
+
+    if not question:
+        return jsonify({"response": "Por favor, faça uma pergunta válida."})
+
+    if pdf_content:
+        return jsonify({"response": f"O PDF carregado contém as seguintes informações: {pdf_content[:300]}..."})
+    else:
+        # Se não há PDF, chama o ChatGPT normalmente
+        resposta_chatgpt = chat_with_gpt(question)
+        return jsonify({"response": resposta_chatgpt})
+    
+@app.route("/stop", methods=["POST"])
+def stop():
+    global stop_event
+    stop_event.set()
+    return jsonify({"response": "Processamento interrompido."})
+
+if __name__ == "__main__":
+    app.run(debug=True)
