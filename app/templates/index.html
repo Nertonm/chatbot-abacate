@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Abacate</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #d0f0c0;
+            text-align: center;
+            padding: 20px;
+        }
+        .chat-container {
+            max-width: 500px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .input-area {
+            margin-top: 10px;
+        }
+        button {
+            background-color: #76a15c;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #5e8748;
+        }
+    </style>
+</head>
+<body>
+    <h1>🥑 Chatbot Abacate 🥑</h1>
+    <div class="chat-container">
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Faça sua pergunta...">
+            <button onclick="sendMessage()">Enviar</button>
+            <button onclick="stopProcessing()" style="background-color: red;">Parar</button>
+            <br>
+            <input type="file" id="pdf-input" accept="application/pdf">
+            <button onclick="uploadPDF()">Enviar PDF</button>
+        </div>
+    </div>
+
+    <script>
+        let controller = new AbortController(); // Controla a requisição
+
+        async function sendMessage() {
+            const userInput = document.getElementById("user-input").value;
+            const chatBox = document.getElementById("chat-box");
+
+            if (!userInput) return;
+
+            chatBox.innerHTML += `<p><strong>Você:</strong> ${userInput}</p>`;
+            document.getElementById("user-input").value = "";
+
+            controller = new AbortController();
+
+            const response = await fetch("/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: userInput }),
+                signal: controller.signal
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let botMessage = document.createElement("p");
+            botMessage.innerHTML = "<strong>Abacate:</strong> <span></span>";
+            chatBox.appendChild(botMessage);
+            let responseElement = botMessage.querySelector("span");
+
+            let fullResponse = "";
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                let text = decoder.decode(value, { stream: true }).trim();
+                try {
+                    let jsonResponse = JSON.parse(text);
+                    if (jsonResponse.response) {
+                        fullResponse += jsonResponse.response;
+                    }
+                } catch (e) {
+                    fullResponse += text;
+                }
+                responseElement.innerHTML = fullResponse;
+            }
+        }
+
+        function stopProcessing() {
+            controller.abort();
+            document.getElementById("chat-box").innerHTML += `<p><strong>Abacate:</strong> Processamento interrompido.</p>`;
+        }
+
+        async function uploadPDF() {
+            const fileInput = document.getElementById("pdf-input");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Selecione um arquivo PDF.");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            const response = await fetch("/upload_pdf", {
+                method: "POST",
+                body: formData
+            });
+
+            const result = await response.json();
+            document.getElementById("chat-box").innerHTML += `<p><strong>Abacate:</strong> ${result.message}</p>`;
+        }
+    </script>
+</body>
+</html>
