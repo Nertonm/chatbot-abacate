@@ -52,12 +52,12 @@ DATABASE_URL=mysql+pymysql://chatbot_user:chatbot_password@db:3306/chatbot_db
 Rodar o Projeto com Docker Compose
 
 Para iniciar a aplicação utilizando Docker Compose, execute os seguintes comandos:
-
+```
 git clone https://github.com/seu-usuario/chatbot-abacate.git
 cd chatbot-abacate
 cp .env.example .env  # Edite o .env conforme necessário
 docker-compose up --build -d
-
+```
 Isso irá:
 
 Construir e iniciar os containers do chatbot e do banco de dados.
