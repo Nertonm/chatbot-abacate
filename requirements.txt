@@ -3,4 +3,5 @@ flask_sqlalchemy
 flask_migrate
 pymysql
 openai
-fitz
+pymupdf==1.22.5 
+python-dotenv
