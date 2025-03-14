@@ -1,4 +1,16 @@
 services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+
   web:
     build: .
     ports:
@@ -10,3 +22,8 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     env_file:
       - .env
+    depends_on:
+      - db
+volumes:
+  mysql_data:
+  

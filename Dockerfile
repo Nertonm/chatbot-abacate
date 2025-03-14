@@ -19,5 +19,8 @@ ENV FLASK_APP=app/app.py
 # Expose the port the app runs on
 EXPOSE 5000
 
+COPY init_db.sql /docker-entrypoint-initdb.d/
+COPY init_db.sh /docker-entrypoint-initdb.d/
+
 # Run the application
 CMD ["flask", "run", "--host=0.0.0.0"]

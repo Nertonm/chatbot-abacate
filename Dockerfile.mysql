@@ -1,0 +1,7 @@
+FROM mysql:latest
+
+# Expor a porta padrão do MySQL
+EXPOSE 3306
+
+# Copiar o script SQL para o diretório de inicialização do MySQL
+COPY init_db.sql /docker-entrypoint-initdb.d/

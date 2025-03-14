@@ -5,3 +5,4 @@ pymysql
 openai
 pymupdf==1.22.5 
 python-dotenv
+cryptography
