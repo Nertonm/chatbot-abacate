@@ -1,3 +1,4 @@
+import fitz
 import openai
 from config import OPENAI_API_KEY
 
@@ -13,17 +14,18 @@ def extract_text_from_pdf(pdf_path):
 
 # Função para interagir com o ChatGPT
 def chat_with_gpt(prompt):
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "system", "content": "Você é um assistente útil."},
-                  {"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+    response_text = ""
+    for chunk in generate_response(prompt):
+        response_text += chunk
+    return response_text
 
-def generate_response_stream(prompt):
+def generate_response(prompt):
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": "Você é um assistente abacate que gosta de abacates muito util."},
+            {"role": "user", "content": prompt}
+        ],
         stream=True
     )
     buffer = ""
@@ -33,7 +35,28 @@ def generate_response_stream(prompt):
             if content:
                 buffer += content
                 if buffer.endswith(('.', '!', '?')):  # Verifica se a resposta está completa
-                    yield f'{{"response": "{buffer}"}}\n'
+                    yield buffer
                     buffer = ""
     if buffer:  # Garante que o buffer restante seja enviado
-        yield f'{{"response": "{buffer}"}}\n'
+        yield buffer
+
+def generate_response_stream(prompt):
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "Você é um assistente abacate que gosta de abacates muito util."},
+            {"role": "user", "content": prompt}
+        ],
+        stream=True
+    )
+    buffer = ""
+    for chunk in response:
+        if chunk.choices and hasattr(chunk.choices[0].delta, "content"):
+            content = chunk.choices[0].delta.content
+            if content:
+                buffer += content
+                if buffer.endswith(('.', '!', '?')):  # Verifica se a resposta está completa
+                    yield buffer
+                    buffer = ""
+    if buffer:  # Garante que o buffer restante seja enviado
+        yield buffer

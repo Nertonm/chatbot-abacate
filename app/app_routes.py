@@ -3,8 +3,8 @@ from models import ChatResponse
 from config import UPLOAD_FOLDER
 from utils import extract_text_from_pdf
 from chat import chat_with_gpt, generate_response_stream
+from app import db
 import os
-from app import create_app, db
 
 PDF_CONTENT = ""  # Definição da variável global
 
@@ -33,7 +33,7 @@ def init_routes(app):
     
     @app.route("/ask", methods=["POST"])
     def ask():
-        global PDF_CONTENT  
+        global PDF_CONTENT  # Agora estamos acessando a variável global corretamente
         data = request.json
         question = data.get("question", "").strip()
 
@@ -48,6 +48,7 @@ def init_routes(app):
         if PDF_CONTENT and any(word in question.lower() for word in ["conteúdo", "pdf", "documento", "arquivo"]):
             return jsonify({"response": f"O PDF carregado contém as seguintes informações: {PDF_CONTENT[:300]}..."})
         
+        # Gerar resposta completa e salvar no banco de dados
         response = chat_with_gpt(question)
         new_response = ChatResponse(question=question, answer=response)
         db.session.add(new_response)
