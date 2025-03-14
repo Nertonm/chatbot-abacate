@@ -17,6 +17,7 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    with app.app_context():
-        db.create_all()  # Cria as tabelas no banco de dados
+    if False:
+        with app.app_context():
+            db.create_all()  # Cria as tabelas no banco de dados
     app.run(debug=True)

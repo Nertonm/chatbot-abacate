@@ -1,8 +1,16 @@
 import fitz
 import openai
-from config import OPENAI_API_KEY
+import pymysql
+from config import OPENAI_API_KEY, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, BOOL
 
 client = openai.Client(api_key=OPENAI_API_KEY)
+
+
+# Verifica a conexão com o banco de dados
+def check_db_connection():
+    return False
+    
+db_connected = check_db_connection()
 
 def extract_text_from_pdf(pdf_path):
     """Lê o conteúdo de um arquivo PDF e retorna o texto extraído."""
@@ -60,3 +68,4 @@ def generate_response_stream(prompt):
                     buffer = ""
     if buffer:  # Garante que o buffer restante seja enviado
         yield buffer
+

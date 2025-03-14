@@ -2,7 +2,7 @@ from flask import request, jsonify, render_template
 from models import ChatResponse
 from config import UPLOAD_FOLDER
 from utils import extract_text_from_pdf
-from chat import chat_with_gpt, generate_response_stream
+from chat import chat_with_gpt, check_db_connection, generate_response_stream
 from app import db
 import os
 
@@ -37,9 +37,12 @@ def init_routes(app):
         data = request.json
         question = data.get("question", "").strip()
 
-        existing_response = ChatResponse.query.filter_by(question=question).first()
-        if existing_response:
-            return jsonify({'response': existing_response.answer})
+        if check_db_connection():
+            print("Conexão com o banco de dados estabelecida.")
+            # Verificar se a pergunta já foi respondida anteriormente
+            existing_response = ChatResponse.query.filter_by(question=question).first()
+            if existing_response:
+                return jsonify({'response': existing_response.answer})
         
         if not question:
             return jsonify({"response": "Por favor, faça uma pergunta válida."})
@@ -48,11 +51,12 @@ def init_routes(app):
         if PDF_CONTENT and any(word in question.lower() for word in ["conteúdo", "pdf", "documento", "arquivo"]):
             return jsonify({"response": f"O PDF carregado contém as seguintes informações: {PDF_CONTENT[:300]}..."})
         
-        # Gerar resposta completa e salvar no banco de dados
-        response = chat_with_gpt(question)
-        new_response = ChatResponse(question=question, answer=response)
-        db.session.add(new_response)
-        db.session.commit()
+        if check_db_connection():
+            # Gerar resposta completa e salvar no banco de dados
+            response = chat_with_gpt(question)
+            new_response = ChatResponse(question=question, answer=response)
+            db.session.add(new_response)
+            db.session.commit()
         return generate_response_stream(question)  # Retorna resposta como streaming
     
     @app.route("/stop", methods=["POST"])
