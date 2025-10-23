@@ -1,125 +1,333 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Chatbot Abacate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #d0f0c0;
-            text-align: center;
-            padding: 20px;
-        }
-        .chat-container {
-            max-width: 500px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .input-area {
-            margin-top: 10px;
-        }
-        button {
-            background-color: #76a15c;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:hover {
-            background-color: #5e8748;
-        }
+            :root{
+                /* new brand palette: avocado + teal accent */
+                --bg:#f3fbf5;
+                --card:#ffffff;
+                --primary:#3aa455; /* avocado green */
+                --accent:#0f9d9a;  /* teal for highlights */
+                --primary-700:#2e8a40;
+                --muted:#6b6f76;
+                --glass: rgba(255,255,255,0.85);
+            }
+        *{box-sizing:border-box}
+        body{font-family:'Inter',system-ui,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,var(--bg),#dff2d8); margin:0; padding:24px; color:#111; transition:background-color .25s,color .25s}
+        .wrap{max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+        header{grid-column:1/-1;display:flex;align-items:center;gap:16px}
+        .logo{font-size:22px;font-weight:700;color:var(--primary)}
+        .subtitle{color:var(--muted);font-size:14px}
+
+        /* Chat area */
+        .chat-card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(15,23,42,0.08);display:flex;flex-direction:column;height:72vh;min-height:480px}
+        .messages{flex:1;overflow:auto;padding-right:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px}
+        .msg{display:flex;margin-bottom:12px;align-items:flex-end;gap:10px;opacity:0;transform:translateY(6px);animation:fadeIn .28s forwards}
+        @keyframes fadeIn{to{opacity:1;transform:translateY(0)}}
+        .msg.me{justify-content:flex-end}
+        .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+        .avatar.me{background:linear-gradient(180deg,var(--primary),var(--primary-700));color:#fff}
+        .avatar.bot{background:linear-gradient(180deg,var(--accent),#7be8e3);color:#042d2d}
+        .bubble{max-width:74%;padding:12px 14px;border-radius:14px;background:var(--glass);color:#111;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+        .msg.me .bubble{background:linear-gradient(180deg,var(--primary),var(--primary-700));color:white;border-bottom-right-radius:4px}
+        .msg.bot .bubble{border-bottom-left-radius:4px}
+        .timestamp{font-size:11px;color:var(--muted);margin-top:6px}
+        .typing{font-style:italic;color:var(--muted)}
+        .typing-dots{display:inline-block;margin-left:6px}
+        .typing-dots span{display:inline-block;width:6px;height:6px;margin:0 2px;background:var(--muted);border-radius:50%;opacity:.25;animation:dot 1s infinite}
+        .typing-dots span:nth-child(2){animation-delay:.15s}
+        .typing-dots span:nth-child(3){animation-delay:.3s}
+        @keyframes dot{50%{opacity:1;transform:translateY(-4px)}}
+
+        /* Sidebar */
+        .sidebar{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 20px rgba(15,23,42,0.06);height:70vh;min-height:420px}
+        .controls{display:flex;flex-direction:column;gap:12px}
+        input[type=text]{width:100%;padding:12px;border-radius:8px;border:1px solid #e6e9ee}
+        .row{display:flex;gap:8px}
+        .btn{background:var(--primary);color:#fff;padding:10px 12px;border-radius:8px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+        .btn.danger{background:#e05b5b}
+        .file-row{display:flex;gap:8px;align-items:center}
+        .file-label{font-size:13px;color:var(--muted)}
+        .progress{height:8px;background:#f1f3f5;border-radius:6px;overflow:hidden}
+        .progress > span{display:block;height:100%;background:var(--primary);width:0%}
+
+        footer{grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;margin-top:12px}
+
+        /* Dark mode */
+        .dark{--bg:#071019;--card:#0f1720;--primary:#2bd07b;--accent:#29b6b1;color:#e6eef0}
+        .dark .subtitle{color:#9fb6b2}
+        .dark .bubble{background:rgba(255,255,255,0.04);color:var(--card)}
+        .dark .avatar.bot{background:linear-gradient(180deg,var(--accent),#0fb0b0);color:#012425}
+        .dark .msg.me .bubble{background:linear-gradient(180deg,var(--primary),#1f9b5a);color:#02120a}
+
+        /* pulse for send button */
+        .btn.send-pulse{animation:pulse 1.6s infinite}
+        @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+
+        /* spinner */
+        .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.2);border-top-color:rgba(255,255,255,0.9);border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        @media (max-width:900px){.wrap{grid-template-columns:1fr}.sidebar{order:2}}
     </style>
 </head>
 <body>
-    <h1>🥑 Chatbot Abacate 🥑</h1>
-    <div class="chat-container">
-        <div id="chat-box"></div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Faça sua pergunta...">
-            <button onclick="sendMessage()">Enviar</button>
-            <button onclick="stopProcessing()" style="background-color: red;">Parar</button>
-            <br>
-            <input type="file" id="pdf-input" accept="application/pdf">
-            <button onclick="uploadPDF()">Enviar PDF</button>
-        </div>
+    <div class="wrap">
+            <header>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div class="logo">🥑 Chatbot Abacate</div>
+                    <div class="subtitle">Converse com o assistente — envie PDFs, pergunte e receba respostas.</div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                    <button id="themeToggle" class="btn" title="Alternar tema">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
+                        </svg>
+                        Tema
+                    </button>
+                </div>
+            </header>
+
+        <main class="chat-card">
+            <div id="messages" class="messages" aria-live="polite" aria-atomic="false"></div>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <input id="user-input" type="text" placeholder="Faça sua pergunta e tecle Enter..." aria-label="Pergunta">
+                                <button id="sendBtn" class="btn" title="Enviar">
+                                    <!-- send icon -->
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
+                                    </svg>
+                                    Enviar
+                                </button>
+                                <button id="stopBtn" class="btn danger" aria-pressed="false" title="Parar">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                        <rect x="5" y="5" width="14" height="14" rx="2" fill="white"/>
+                                    </svg>
+                                    Parar
+                                </button>
+                            </div>
+        </main>
+
+        <aside class="sidebar">
+            <div class="controls">
+                        <div class="file-row">
+                            <input id="pdf-input" type="file" accept="application/pdf">
+                            <div>
+                                <div class="file-label">Enviar PDF</div>
+                                <div class="progress" style="width:160px"><span id="uploadBar"></span></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <button id="uploadBtn" class="btn" title="Enviar PDF">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                    <path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M21 21H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Enviar PDF
+                            </button>
+                            <button id="clearBtn" class="btn" style="background:#9aa6b2" title="Limpar histórico">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                    <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M8 6v14c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M10 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                Limpar
+                            </button>
+                        </div>
+                <div class="row">
+                    <label class="file-label">Modelo:</label>
+                    <select id="modelSelect">
+                        <option>gpt-3.5-turbo</option>
+                    </select>
+                </div>
+                <div style="font-size:13px;color:var(--muted)">Dicas: mencione se quer que responda com base no PDF carregado.</div>
+            </div>
+        </aside>
+
+        <footer>Feito com 🥑 — projeto de integração</footer>
     </div>
 
     <script>
-        let controller = new AbortController(); // Controla a requisição
+            const messagesEl = document.getElementById('messages');
+        const inputEl = document.getElementById('user-input');
+        const sendBtn = document.getElementById('sendBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const pdfInput = document.getElementById('pdf-input');
+        const uploadBar = document.getElementById('uploadBar');
+            const clearBtn = document.getElementById('clearBtn');
 
-        async function sendMessage() {
-            const userInput = document.getElementById("user-input").value;
-            const chatBox = document.getElementById("chat-box");
+            // Dark mode toggle
+            const bodyEl = document.body;
+            const darkKey = 'chat:dark';
+            const historyKey = 'chat:history';
 
-            if (!userInput) return;
+            function loadTheme(){ if(localStorage.getItem(darkKey)==='1') bodyEl.classList.add('dark'); }
+            function toggleTheme(){ const isDark=bodyEl.classList.toggle('dark'); localStorage.setItem(darkKey, isDark? '1':'0'); }
 
-            chatBox.innerHTML += `<p><strong>Você:</strong> ${userInput}</p>`;
-            document.getElementById("user-input").value = "";
+            // Load chat history
+            function loadHistory(){
+                const raw = localStorage.getItem(historyKey); if(!raw) return;
+                try{ const arr = JSON.parse(raw); for(const m of arr){ createMessageElement(m.who, m.text); } }
+                catch(e){ console.warn('history load failed',e); }
+            }
+            function saveMessage(who,text){
+                try{ const raw = localStorage.getItem(historyKey); const arr = raw? JSON.parse(raw):[]; arr.push({who,text}); localStorage.setItem(historyKey, JSON.stringify(arr)); }
+                catch(e){ console.warn('save failed',e); }
+            }
 
-            controller = new AbortController();
+            let controller = null;
+            let typingIndicator = null;
 
-            const response = await fetch("/ask", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ question: userInput }),
-                signal: controller.signal
-            });
+            function createMessageElement(who='bot', initialText=''){
+                const wrap = document.createElement('div');
+                wrap.className = 'msg ' + (who==='me' ? 'me' : 'bot');
 
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let botMessage = document.createElement("p");
-            botMessage.innerHTML = "<strong>Abacate:</strong> <span></span>";
-            chatBox.appendChild(botMessage);
-            let responseElement = botMessage.querySelector("span");
+                        const avatar = document.createElement('div');
+                        avatar.className = 'avatar ' + (who==='me' ? 'me' : 'bot');
+                        // SVG icons
+                        if(who==='me'){
+                            avatar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" fill="currentColor"/><path d="M4 20c0-2.21 3.58-4 8-4s8 1.79 8 4v1H4v-1z" fill="currentColor"/></svg>`;
+                        }else{
+                            avatar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden><path d="M2 12l1.5-1L11 16l9.5-5L22 12 11 22 2 12z" fill="currentColor"/></svg>`;
+                        }
 
-            let fullResponse = "";
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = linkify(escapeHtml(initialText));
 
-                let text = decoder.decode(value, { stream: true }).trim();
-                try {
-                    let jsonResponse = JSON.parse(text);
-                    if (jsonResponse.response) {
-                        fullResponse += jsonResponse.response;
+                const meta = document.createElement('div');
+                meta.className = 'timestamp';
+                meta.textContent = new Date().toLocaleTimeString();
+
+                const container = document.createElement('div');
+                container.appendChild(avatar);
+                container.appendChild(bubble);
+                container.appendChild(meta);
+
+                wrap.appendChild(container);
+                        messagesEl.appendChild(wrap);
+                        messagesEl.scrollTop = messagesEl.scrollHeight;
+                        // persist
+                        saveMessage(who, initialText);
+                        return {wrap, bubble, meta};
+            }
+
+            function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            // Simple linkify for http(s) links
+            function linkify(text){
+                return text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+            }
+
+            sendBtn.onclick = () => sendMessage();
+            inputEl.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMessage(); });
+            // pulse when there's input
+            inputEl.addEventListener('input', ()=>{ if(inputEl.value.trim()) sendBtn.classList.add('send-pulse'); else sendBtn.classList.remove('send-pulse'); });
+
+            async function sendMessage(){
+                const text = inputEl.value.trim();
+                if(!text) return;
+                const meEl = createMessageElement('me', text);
+                inputEl.value='';
+
+                controller = new AbortController();
+
+                // add bot placeholder with typing
+                const botEl = createMessageElement('bot', '...');
+                botEl.bubble.classList.add('typing');
+
+                try{
+                    const res = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text}),signal:controller.signal});
+                    if(!res.ok){ botEl.bubble.classList.remove('typing'); botEl.bubble.innerText = 'Erro ao obter resposta'; return; }
+
+                    const reader = res.body.getReader();
+                    const dec = new TextDecoder();
+                    let buf = '';
+                    let accumulated = '';
+
+                    while(true){
+                        const {done, value} = await reader.read();
+                        if(done) break;
+                        buf += dec.decode(value, {stream:true});
+
+                        // Try to parse JSON objects embedded in the stream. If not JSON, treat as plain text.
+                        // Split by newline in case server sends newline-delimited JSON or plain chunks.
+                        let parts = buf.split(/\n+/);
+                        // Keep last partial
+                        buf = parts.pop();
+
+                        for(const part of parts){
+                            const chunk = part.trim();
+                            if(!chunk) continue;
+                            try{
+                                // allow either raw JSON {"response":"..."} or plain text
+                                const j = JSON.parse(chunk);
+                                if(j.response) accumulated += j.response;
+                            }catch(_){
+                                accumulated += chunk;
+                            }
+                            botEl.bubble.classList.remove('typing');
+                            botEl.bubble.innerHTML = linkify(escapeHtml(accumulated));
+                            messagesEl.scrollTop = messagesEl.scrollHeight;
+                        }
                     }
-                } catch (e) {
-                    fullResponse += text;
+
+                    // flush remaining buffer
+                    if(buf){
+                        try{ const j = JSON.parse(buf); if(j.response) accumulated += j.response; }
+                        catch{ accumulated += buf; }
+                        botEl.bubble.classList.remove('typing');
+                        botEl.bubble.innerHTML = linkify(escapeHtml(accumulated));
+                    }
+
+                }catch(err){
+                    botEl.bubble.classList.remove('typing');
+                    if(err.name==='AbortError') botEl.bubble.innerText='Processamento interrompido.';
+                    else botEl.bubble.innerText='Erro: ' + err.message;
                 }
-                responseElement.innerHTML = fullResponse;
             }
-        }
 
-        function stopProcessing() {
-            controller.abort();
-            document.getElementById("chat-box").innerHTML += `<p><strong>Abacate:</strong> Processamento interrompido.</p>`;
-        }
+            stopBtn.onclick = ()=>{ if(controller) controller.abort(); }
 
-        async function uploadPDF() {
-            const fileInput = document.getElementById("pdf-input");
-            const file = fileInput.files[0];
-            if (!file) {
-                alert("Selecione um arquivo PDF.");
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append("file", file);
-            
-            const response = await fetch("/upload_pdf", {
-                method: "POST",
-                body: formData
-            });
+                uploadBtn.onclick = async ()=>{
+                    // if no file chosen, open file selector
+                    if(!pdfInput.files || !pdfInput.files[0]){ pdfInput.click(); return; }
+                    const file = pdfInput.files[0];
+                    const fd = new FormData(); fd.append('file', file);
 
-            const result = await response.json();
-            document.getElementById("chat-box").innerHTML += `<p><strong>Abacate:</strong> ${result.message}</p>`;
-        }
+                    uploadBtn.disabled = true; uploadBtn.style.opacity = .7;
+                    const oldContent = uploadBtn.innerHTML;
+                    uploadBtn.innerHTML = '<span class="spinner" aria-hidden></span> Enviando';
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST','/upload_pdf');
+                    xhr.upload.onprogress = (e)=>{ if(e.lengthComputable) uploadBar.style.width = Math.round((e.loaded/e.total)*100) + '%'; }
+                    xhr.onload = ()=>{
+                        if(xhr.status===200){ createMessageElement('bot','PDF enviado e processado.'); uploadBar.style.width='0%'; }
+                        else { createMessageElement('bot','Falha ao enviar PDF'); }
+                        uploadBtn.disabled = false; uploadBtn.style.opacity = 1; uploadBtn.innerHTML = oldContent; pdfInput.value = null;
+                    };
+                    xhr.onerror = ()=>{ createMessageElement('bot','Erro no envio'); uploadBtn.disabled = false; uploadBtn.style.opacity = 1; uploadBtn.innerHTML = oldContent; };
+                    xhr.send(fd);
+                }
+
+            document.getElementById('clearBtn').onclick = ()=>{ messagesEl.innerHTML=''; }
+
+            // connect UI
+            document.getElementById('themeToggle').onclick = toggleTheme;
+            clearBtn.onclick = ()=>{ messagesEl.innerHTML=''; localStorage.removeItem(historyKey); };
+                pdfInput.addEventListener('change', ()=>{ if(pdfInput.files && pdfInput.files[0]) uploadBtn.click(); });
+
+            // init
+            loadTheme();
+            loadHistory();
     </script>
 </body>
 </html>
