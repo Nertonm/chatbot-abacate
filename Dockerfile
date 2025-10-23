@@ -1,26 +1,30 @@
 # Use the official Python image from the Docker Hub
 FROM python:3.9-slim
 
-# Set the working directory in the container
+# Create a non-root user for safety
+RUN useradd --create-home appuser || true
+
 WORKDIR /app
 
-# Copy the requirements file into the container
-COPY requirements.txt requirements.txt
+# Copy requirements and install in one layer; no cache to keep image smaller
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Install the dependencies
-RUN pip install -r requirements.txt
+# Copy only what we need (use .dockerignore to keep context small)
+COPY . /app
 
-# Copy the rest of the application code into the container
-COPY . .
+# Make scripts executable
+RUN chmod +x /app/scripts/wait-for-db.sh /app/scripts/docker-entrypoint.sh || true
 
-# Set the environment variable for Flask
-ENV FLASK_APP=app/app.py
+ENV PYTHONUNBUFFERED=1
 
-# Expose the port the app runs on
 EXPOSE 5000
 
-COPY init_db.sql /docker-entrypoint-initdb.d/
-COPY init_db.sh /docker-entrypoint-initdb.d/
+# Copy DB init scripts if provided (kept for compatibility)
+RUN [ -f init_db.sql ] && cp init_db.sql /docker-entrypoint-initdb.d/ || true
+RUN [ -f init_db.sh ] && cp init_db.sh /docker-entrypoint-initdb.d/ || true
 
-# Run the application
-CMD ["flask", "run", "--host=0.0.0.0"]
+USER appuser
+
+ENTRYPOINT ["bash", "/app/scripts/docker-entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

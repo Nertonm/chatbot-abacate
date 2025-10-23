@@ -2,14 +2,21 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${DB_NAME:-chatbot_db}
+      MYSQL_USER: ${DB_USER:-chatbot_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-chatbot_password}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   web:
     build: .
@@ -18,12 +25,15 @@ services:
     volumes:
       - .:/app
     environment:
-      - FLASK_ENV=development
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DATABASE_URL=${DATABASE_URL}
     env_file:
       - .env
     depends_on:
       - db
+    restart: on-failure
 volumes:
   mysql_data:
   
