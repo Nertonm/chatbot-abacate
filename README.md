@@ -33,7 +33,6 @@ chatbot-abacate/
 
 ### Pré-requisitos  
 
-- Docker  
 
 ### Variáveis de Ambiente  
 
@@ -55,7 +54,7 @@ Para iniciar a aplicação utilizando Docker Compose, execute os seguintes coman
 ```
 git clone https://github.com/seu-usuario/chatbot-abacate.git
 cd chatbot-abacate
-cp .env.example .env  # Edite o .env conforme necessário
+cp .env.exemple .env  # Edite o .env conforme necessário
 docker-compose up --build -d
 ```
 Isso irá:
@@ -63,3 +62,57 @@ Isso irá:
 Construir e iniciar os containers do chatbot e do banco de dados.
 
 Rodar as migrações para configurar o banco de dados.
+
+## Executando localmente (sem Docker)
+
+1. Crie e ative um ambiente virtual (Python 3.8+ recomendado):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Copie variáveis de ambiente e defina sua chave OpenAI em `.env` ou exporte no shell:
+
+```bash
+cp .env.example .env
+export OPENAI_API_KEY=sk-...
+```
+
+3. Crie o banco de dados localmente (ou configure `DATABASE_URL` no `.env`) e rode a aplicação:
+
+```bash
+# Rodar localmente com uvicorn
+uvicorn app.main:app --reload --port 5000
+```
+
+## Notas sobre Docker
+
+O `docker-compose` agora inclui um healthcheck para o serviço `db`. Se o container `web` falhar logo na inicialização, verifique os logs do banco e do web com:
+
+```bash
+docker-compose logs -f db
+docker-compose logs -f web
+docker-compose ps
+```
+
+O `web` usa política `restart: on-failure` para tentar reiniciar caso o banco ainda não esteja pronto.
+
+Importante: dentro do Docker Compose o host do banco é o nome do serviço (`db`). Para evitar confusão, você pode:
+
+- Definir `DB_HOST=db` no arquivo `.env` antes de rodar o `docker-compose`.
+- Ou exportar `DB_HOST=db` no ambiente antes de executar o compose.
+
+Exemplo (build + start):
+
+```bash
+docker-compose build --pull --no-cache
+docker-compose up --remove-orphans --force-recreate
+```
+
+Para ver logs em tempo real:
+
+```bash
+docker-compose logs -f web
+```
