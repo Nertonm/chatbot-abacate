@@ -1,9 +1,17 @@
-from flask import request, jsonify, render_template
-from models import ChatResponse
-from config import UPLOAD_FOLDER
-from utils import extract_text_from_pdf
-from chat import chat_with_gpt, generate_response_stream
-from app import db
+"""
+Este módulo pertence à versão Flask do app. O projeto foi migrado para FastAPI.
+Por enquanto mantemos o código para referência.
+"""
+
+try:
+    from flask import request, jsonify, render_template
+except Exception:  # pragma: no cover - optional Flask compatibility
+    request = jsonify = render_template = None
+from app.models import ChatResponse
+from app.config import UPLOAD_FOLDER
+from app.utils import extract_text_from_pdf
+from app.chat import chat_with_gpt, generate_response_stream
+from app.extensions import db
 import os
 
 PDF_CONTENT = ""  # Definição da variável global

@@ -1,22 +1,16 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from config import SQLALCHEMY_DATABASE_URI
+"""
+Este arquivo era a entrada do app Flask. O projeto foi migrado para FastAPI.
+Mantenho este arquivo por compatibilidade, mas execute o servidor com:
 
-db = SQLAlchemy()
+    uvicorn app.main:app --reload --port 5000
 
-def create_app():
-    app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI  # Use o URI do banco de dados desejado
-    db.init_app(app)
-    
-    # Importa init_routes aqui para evitar importação circular
-    from app_routes import init_routes
-    init_routes(app)
-    
-    return app
+"""
+from warnings import warn
 
-if __name__ == "__main__":
-    app = create_app()
-    with app.app_context():
-        db.create_all()  # Cria as tabelas no banco de dados
-    app.run(debug=True)
+
+def deprecated():
+    warn('A aplicação foi migrada para FastAPI. Use `uvicorn app.main:app` para executar.')
+
+
+if __name__ == '__main__':
+    deprecated()
