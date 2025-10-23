@@ -1,11 +1,12 @@
 """
-Versão antiga (Flask). Migrado para FastAPI; mantenho por referência.
+Versão Flask (deprecada). Mantida para referência.
 """
 
 try:
     from flask import request, jsonify, render_template
 except Exception:  # pragma: no cover - optional Flask compatibility
     request = jsonify = render_template = None
+
 from app.models import ChatResponse
 from app.config import UPLOAD_FOLDER
 from app.utils import extract_text_from_pdf

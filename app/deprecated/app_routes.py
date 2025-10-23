@@ -1,18 +1,18 @@
 """
-Versão antiga (Flask). Migrado para FastAPI; mantenho por referência.
+Versão Flask (deprecada). Mantida para referência.
 """
 
 try:
     from flask import request, jsonify, render_template
 except Exception:  # pragma: no cover - optional Flask compatibility
     request = jsonify = render_template = None
+
 from app.models import ChatResponse
 from app.config import UPLOAD_FOLDER
 from app.utils import extract_text_from_pdf
 from app.chat import chat_with_gpt, generate_response_stream
-import os
-from app import create_app
 from app.extensions import db
+import os
 
 PDF_CONTENT = ""  # Definição da variável global
 
@@ -41,7 +41,7 @@ def init_routes(app):
     
     @app.route("/ask", methods=["POST"])
     def ask():
-        global PDF_CONTENT  
+        global PDF_CONTENT  # Agora estamos acessando a variável global corretamente
         data = request.json
         question = data.get("question", "").strip()
 
@@ -56,6 +56,7 @@ def init_routes(app):
         if PDF_CONTENT and any(word in question.lower() for word in ["conteúdo", "pdf", "documento", "arquivo"]):
             return jsonify({"response": f"O PDF carregado contém as seguintes informações: {PDF_CONTENT[:300]}..."})
         
+        # Gerar resposta completa e salvar no banco de dados
         response = chat_with_gpt(question)
         new_response = ChatResponse(question=question, answer=response)
         db.session.add(new_response)

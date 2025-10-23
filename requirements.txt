@@ -1,8 +1,9 @@
-flask
-flask_sqlalchemy
-flask_migrate
+fastapi
+uvicorn[standard]
+sqlalchemy
 pymysql
 openai
-pymupdf==1.22.5 
+pymupdf==1.22.5
 python-dotenv
 cryptography
+python-multipart

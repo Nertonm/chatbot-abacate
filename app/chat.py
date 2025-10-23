@@ -1,62 +1,46 @@
-import fitz
 import openai
-from config import OPENAI_API_KEY
+from app.config import OPENAI_API_KEY
+from app.utils import extract_text_from_pdf
 
-client = openai.Client(api_key=OPENAI_API_KEY)
+# Inicializa chave da OpenAI
+openai.api_key = OPENAI_API_KEY
 
-def extract_text_from_pdf(pdf_path):
-    """Lê o conteúdo de um arquivo PDF e retorna o texto extraído."""
-    text = ""
-    with fitz.open(pdf_path) as doc:
-        for page in doc:
-            text += page.get_text("text") + "\n"
-    return text
 
-# Função para interagir com o ChatGPT
 def chat_with_gpt(prompt):
+    """Retorna a resposta completa como string (usa streaming internamente)."""
     response_text = ""
     for chunk in generate_response(prompt):
         response_text += chunk
     return response_text
 
+
 def generate_response(prompt):
-    response = client.chat.completions.create(
+    # Usa a API chat completion com stream do pacote openai
+    resp = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "Você é um assistente abacate que gosta de abacates muito util."},
+            {"role": "system", "content": "Você é um assistente abacate que gosta de abacates muito útil."},
             {"role": "user", "content": prompt}
         ],
         stream=True
     )
+
     buffer = ""
-    for chunk in response:
-        if chunk.choices and hasattr(chunk.choices[0].delta, "content"):
-            content = chunk.choices[0].delta.content
+    for chunk in resp:
+        # cada chunk é um dict com 'choices'
+        for choice in chunk.get('choices', []):
+            delta = choice.get('delta', {})
+            content = delta.get('content')
             if content:
                 buffer += content
-                if buffer.endswith(('.', '!', '?')):  # Verifica se a resposta está completa
+                if buffer.endswith(('.', '!', '?')):
                     yield buffer
                     buffer = ""
-    if buffer:  # Garante que o buffer restante seja enviado
+    if buffer:
         yield buffer
 
+
 def generate_response_stream(prompt):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "Você é um assistente abacate que gosta de abacates muito util."},
-            {"role": "user", "content": prompt}
-        ],
-        stream=True
-    )
-    buffer = ""
-    for chunk in response:
-        if chunk.choices and hasattr(chunk.choices[0].delta, "content"):
-            content = chunk.choices[0].delta.content
-            if content:
-                buffer += content
-                if buffer.endswith(('.', '!', '?')):  # Verifica se a resposta está completa
-                    yield buffer
-                    buffer = ""
-    if buffer:  # Garante que o buffer restante seja enviado
-        yield buffer
+    # generator reutilizável para streaming por SSE ou chunked responses
+    for piece in generate_response(prompt):
+        yield piece
