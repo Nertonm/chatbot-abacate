@@ -24,7 +24,13 @@ SCRIPT_DIR=$(dirname "$0")
 
 echo "Starting entrypoint: waiting for DB..."
 echo "Using DB host: ${DB_HOST:-db}, port: ${DB_PORT:-3306}"
-${SCRIPT_DIR}/wait-for-db.sh
+# Se DISABLE_DB estiver configurado (1/true/yes), pule a espera pelo banco.
+dval=$(echo "${DISABLE_DB:-}" | tr '[:upper:]' '[:lower:]')
+if [ "$dval" = "1" ] || [ "$dval" = "true" ] || [ "$dval" = "yes" ]; then
+  echo "DISABLE_DB set to '$DISABLE_DB' - skipping DB wait"
+else
+  ${SCRIPT_DIR}/wait-for-db.sh
+fi
 
 echo "Starting application: $@"
 exec "$@"

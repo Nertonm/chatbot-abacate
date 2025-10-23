@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form, Body, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
-from app.extensions import SessionLocal, engine, Base
+from app.extensions import get_db, engine, Base
+from app.config import USE_DB
 import time
 import os
 import pymysql
@@ -32,6 +33,11 @@ def startup_event():
     db_pass = os.getenv('DB_PASSWORD', os.getenv('MYSQL_PASSWORD', 'chatbot_password'))
     db_name = os.getenv('DB_NAME', 'chatbot_db')
 
+    # Se a aplicação estiver em modo sem-banco, pule as checagens e criação de tabelas.
+    if not USE_DB:
+        print("Running with DATABASE disabled (DISABLE_DB). Skipping DB startup checks.")
+        return
+
     last_exc = None
     for attempt in range(1, retries + 1):
         try:
@@ -39,7 +45,8 @@ def startup_event():
             conn = pymysql.connect(host=db_host, port=db_port, user=db_user, password=db_pass, database=db_name, connect_timeout=5)
             conn.close()
             # If auth successful, create tables via SQLAlchemy
-            Base.metadata.create_all(bind=engine)
+            if engine is not None:
+                Base.metadata.create_all(bind=engine)
             print("DB connected and tables created successfully")
             return
         except Exception as e:
@@ -50,12 +57,8 @@ def startup_event():
     raise RuntimeError(f"Could not connect to DB after {retries} retries. Last error: {last_exc}")
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Nota: usamos `get_db` definido em `app.extensions` para compatibilidade com
+# modo com e sem banco.
 
 
 @app.get('/', response_class=HTMLResponse)

@@ -19,7 +19,7 @@ services:
       start_period: 5s
 
   web:
-    build: .
+    image: nerton/chatbot-abacate:latest
     ports:
       - "5000:5000"
     volumes:

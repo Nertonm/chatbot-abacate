@@ -20,3 +20,8 @@ if not database_url:
 
 SQLALCHEMY_DATABASE_URI = database_url
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Permite executar a aplicação sem conexão com banco de dados externo.
+# Defina DISABLE_DB=1 ou DISABLE_DB=true para ativar o modo sem-banco.
+DISABLE_DB = str(os.getenv('DISABLE_DB', '0')).lower() in ('1', 'true', 'yes')
+USE_DB = not DISABLE_DB
