@@ -1,0 +1,105 @@
+name: CI/CD - Release, Build, e Deploy PR
+
+# GATILHO: Executa apenas quando uma tag no formato v*.*.* (ex: v1.0.0) é criada
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  IMAGE_REGISTRY: docker.io
+  IMAGE_NAME: nerton/chatbot-abacate                 
+  MANIFESTS_REPO: nertonm/chatbot-manifests       
+
+jobs:
+  # JOB 1: Construir a imagem e enviar para o Docker Hub
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      # Exporta a tag da imagem para o próximo job usar
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: 1. Checkout do código da aplicação
+        uses: actions/checkout@v4
+
+      - name: 2. Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 3. Extrair metadados da imagem (Tags e Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+
+      - name: 4. Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 5. Buildar e Publicar Imagem Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=inline
+          cache-to: type=inline,mode=max
+
+  # JOB 2: Criar o Pull Request no Repositório de Manifestos
+  create-deploy-pr:
+    runs-on: ubuntu-latest
+    # Garante que este job só rode APÓS o 'build-and-push' ser concluído
+    needs: build-and-push
+    steps:
+      - name: 1. Checkout do repositório de MANIFESTOS
+        uses: actions/checkout@v4
+        with:
+          # Usa o repo de manifestos definido na variável 'env'
+          repository: ${{ env.MANIFESTS_REPO }}
+          # Salva o repo em uma pasta separada chamada 'manifests'
+          path: manifests
+          # Usa a chave SSH para ter permissão de escrita
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 2. Atualizar o arquivo de deployment.yaml
+        run: |
+          # Pega a tag da imagem do job anterior
+          IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
+          
+          # Define o nome completo da imagem
+          NEW_IMAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
+          
+          # Define o caminho do arquivo
+          FILE_PATH="manifests/${{ env.MANIFESTS_FILE_PATH }}"
+
+          echo "Atualizando a imagem em ${FILE_PATH} para ${NEW_IMAGE}"
+          
+          # Usa 'sed' para substituir a linha 'image:'
+          # O delimitador '|' é usado para evitar conflitos com '/' no nome da imagem
+          sed -i -E "s|image: .*|image: ${NEW_IMAGE}|g" ${FILE_PATH}
+
+      - name: 3. Criar Pull Request com as alterações
+        uses: peter-evans/create-pull-request@v6
+        with:
+          # Informa a action para trabalhar dentro da pasta 'manifests'
+          path: manifests
+          # A chave SSH já foi usada no checkout, mas é boa prática incluí-la novamente
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+          # Configurações do Git
+          commit-message: "ci: Atualiza imagem para ${{ needs.build-and-push.outputs.image_tag }}"
+          author: "GitHub Actions <actions@github.com>"
+          committer: "GitHub Actions <actions@github.com>"
+          
+          # Configurações do PR
+          title: "CI: Deploy da imagem ${{ needs.build-and-push.outputs.image_tag }}"
+          body: |
+            Pull Request automático para atualizar a imagem da aplicação para a versão **${{ needs.build-and-push.outputs.image_tag }}**.
+            
+            Este PR foi gerado pelo workflow de CI/CD.
+          branch: "auto/update-image-${{ needs.build-and-push.outputs.image_tag }}"
+          base: main 
