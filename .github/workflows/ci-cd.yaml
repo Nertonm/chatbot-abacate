@@ -60,9 +60,9 @@ jobs:
         with:
           # Usa o repo de manifestos definido na variável 'env'
           repository: ${{ env.MANIFESTS_REPO }}
-          # Salva o repo na raiz do workspace
-          path: /
-          # Usa a chave SSH para ter permissão de escrita
+          # Salva o repo dentro de uma subpasta 'manifests' no workspace
+          path: manifests
+          # Usa a chave SSH para ter permissão de escrita (certifique-se de que está definida)
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: 2. Atualizar o arquivo de deployment.yaml
@@ -73,11 +73,11 @@ jobs:
           # Define o nome completo da imagem
           NEW_IMAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
           
-          # Define o caminho do arquivo
-          FILE_PATH="${{ env.MANIFESTS_FILE_PATH }}"
+          # Define o caminho do arquivo (dentro da pasta onde fizemos checkout)
+          FILE_PATH="manifests/${{ env.MANIFESTS_FILE_PATH }}"
 
           echo "Atualizando a imagem em ${FILE_PATH} para ${NEW_IMAGE}"
-          
+
           # Usa 'sed' para substituir a linha 'image:'
           # O delimitador '|' é usado para evitar conflitos com '/' no nome da imagem
           sed -i -E "s|image: .*|image: ${NEW_IMAGE}|g" ${FILE_PATH}
@@ -85,8 +85,8 @@ jobs:
       - name: 3. Criar Pull Request com as alterações
         uses: peter-evans/create-pull-request@v6
         with:
-          # Informa a action para trabalhar dentro da raiz do repositório de manifestos
-          path: /
+          # Informa a action para trabalhar dentro da pasta onde o repo foi checado
+          path: manifests
           # A chave SSH já foi usada no checkout, mas é boa prática incluí-la novamente
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
           
