@@ -67,20 +67,40 @@ jobs:
 
       - name: 2. Atualizar o arquivo de deployment.yaml
         run: |
-          # Pega a tag da imagem do job anterior
+          # Pega a tag da imagem do job anterior (substituído em tempo de template)
           IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
-          
+
           # Define o nome completo da imagem
           NEW_IMAGE="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}"
-          
-          # Define o caminho do arquivo (dentro da pasta onde fizemos checkout)
-          FILE_PATH="manifests/${{ env.MANIFESTS_FILE_PATH }}"
+
+          # Caminho relativo que deve ser informado via env MANIFESTS_FILE_PATH
+          FILE_REL="${{ env.MANIFESTS_FILE_PATH }}"
+
+          if [ -z "${FILE_REL}" ]; then
+            echo "ERROR: MANIFESTS_FILE_PATH não está definido. Defina 'MANIFESTS_FILE_PATH' no workflow env ou como variável de repositório (ex: k8s/deployment-app.yaml)"
+            exit 1
+          fi
+
+          # Caminho final dentro do workspace onde o repo de manifestos foi checado
+          FILE_PATH="manifests/${FILE_REL}"
 
           echo "Atualizando a imagem em ${FILE_PATH} para ${NEW_IMAGE}"
 
-          # Usa 'sed' para substituir a linha 'image:'
-          # O delimitador '|' é usado para evitar conflitos com '/' no nome da imagem
-          sed -i -E "s|image: .*|image: ${NEW_IMAGE}|g" ${FILE_PATH}
+          # Debug: liste o diretório para ajudar na investigação caso falhe
+          echo "Conteúdo de manifests/:"
+          ls -la manifests || true
+
+          # Verifica se o arquivo existe e é um arquivo regular antes de editar
+          if [ ! -f "${FILE_PATH}" ]; then
+            echo "ERROR: Arquivo alvo não encontrado ou não é um arquivo regular: ${FILE_PATH}"
+            exit 1
+          fi
+
+          # Usa 'sed' para substituir a linha 'image:' no arquivo alvo
+          sed -i -E "s|image: .*|image: ${NEW_IMAGE}|g" "${FILE_PATH}"
+
+          # Mostra diff para confirmar a alteração
+          git --no-pager --no-color diff -- "${FILE_PATH}" || true
 
       - name: 3. Criar Pull Request com as alterações
         uses: peter-evans/create-pull-request@v6
