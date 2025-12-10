@@ -50,17 +50,15 @@ jobs:
           cache-from: type=inline
           cache-to: type=inline,mode=max
 
-  # JOB DE QUALIDADE DE CÓDIGO (NOVO)
-  sonar-scan:
+  build:
+    name: Build and analyze
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Importante: Shallow clones podem desativar algumas regras do Sonar
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v4
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -68,8 +66,8 @@ jobs:
   # JOB 2: Criar o Pull Request no Repositório de Manifestos
   create-deploy-pr:
     runs-on: ubuntu-latest
-    # Garante que este job só rode APÓS o 'build-and-push' ser concluído
-    needs: build-and-push
+    # Garante que este job só rode APÓS o 'build-and-push' e 'build' serem concluídos
+    needs: [build-and-push, build]
     steps:
       - name: 1. Checkout do repositório de MANIFESTOS (usando token)
         uses: actions/checkout@v4
