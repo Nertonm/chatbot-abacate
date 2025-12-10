@@ -50,6 +50,21 @@ jobs:
           cache-from: type=inline
           cache-to: type=inline,mode=max
 
+  # JOB DE QUALIDADE DE CÓDIGO (NOVO)
+  sonar-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Importante: Shallow clones podem desativar algumas regras do Sonar
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
   # JOB 2: Criar o Pull Request no Repositório de Manifestos
   create-deploy-pr:
     runs-on: ubuntu-latest
